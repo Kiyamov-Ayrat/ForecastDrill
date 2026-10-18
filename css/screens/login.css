@@ -1,0 +1,3 @@
+/* login.css — интерфейс S-1 «Вход в систему» */
+.login{max-width:390px;margin:50px auto}
+.login .card{display:flex;flex-direction:column;gap:12px}

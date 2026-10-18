@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Прототип интерфейса ПС «БурПрогноз»</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<!-- Стили конкретных интерфейсов -->
+<link rel="stylesheet" href="css/screens/login.css">
+<link rel="stylesheet" href="css/screens/risk.css">
+<link rel="stylesheet" href="css/screens/dash.css">
+<link rel="stylesheet" href="css/screens/well.css">
+<link rel="stylesheet" href="css/screens/journal.css">
+<link rel="stylesheet" href="css/screens/rep.css">
+<link rel="stylesheet" href="css/screens/quality.css">
+<link rel="stylesheet" href="css/screens/src.css">
+<link rel="stylesheet" href="css/screens/thr.css">
+<link rel="stylesheet" href="css/screens/models.css">
+<link rel="stylesheet" href="css/screens/users.css">
+</head>
+<body>
+<header class="top">
+  <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="8" fill="#1f3a5f"/><path d="M17 5 L10 27 H24 Z" fill="none" stroke="#fff" stroke-width="2"/><path d="M6 20 H12 L14 15 L17 24 L20 17 L22 20 H28" fill="none" stroke="#5fd0a0" stroke-width="2"/></svg>
+  <b>БурПрогноз</b><span class="tag">прогноз осложнений при бурении</span>
+  <span class="sp"></span><span id="who"></span>
+  <button id="themeBtn" class="btn sec">◐ Тема</button>
+</header>
+<div id="app"></div>
+<div id="toast"></div>
+
+<!-- Ядро приложения -->
+<script src="js/core/utils.js"></script>
+<script src="js/core/state.js"></script>
+<script src="js/core/data.js"></script>
+<script src="js/core/charts.js"></script>
+<script src="js/core/router.js"></script>
+
+<!-- Экраны (интерфейсы) -->
+<script src="js/screens/login.js"></script>
+<script src="js/screens/risk.js"></script>
+<script src="js/screens/dash.js"></script>
+<script src="js/screens/well.js"></script>
+<script src="js/screens/journal.js"></script>
+<script src="js/screens/rep.js"></script>
+<script src="js/screens/quality.js"></script>
+<script src="js/screens/src.js"></script>
+<script src="js/screens/thr.js"></script>
+<script src="js/screens/models.js"></script>
+<script src="js/screens/users.js"></script>
+
+<!-- Точка входа: сборка реестра экранов и первый рендер -->
+<script src="js/main.js"></script>
+</body>
+</html>
