@@ -1,0 +1,12 @@
+/* layout.css — общая каркасная раскладка: шапка, сайдбар, контент, сетки */
+.top{display:flex;align-items:center;gap:12px;padding:10px 18px;background:var(--card);border-bottom:1px solid var(--bd);flex-wrap:wrap}
+.top .sp{flex:1}.top b{font-size:17px;color:var(--pri)}
+.app{display:flex;min-height:calc(100vh - 58px)}
+.side{width:260px;padding:14px;border-right:1px solid var(--bd);background:var(--card)}
+.side a{display:block;padding:10px 12px;border-radius:8px;color:var(--tx);text-decoration:none;margin-bottom:4px}
+.side a:hover{background:var(--bg)}.side a.on{background:var(--acc);color:var(--oa);font-weight:700}
+main{flex:1;padding:20px;min-width:0}main h2{margin:0 0 14px}
+.grid{display:grid;gap:14px}.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.g3{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--pri);color:var(--oa);padding:12px 20px;border-radius:10px;font-weight:700;display:none;z-index:9}
+@media(max-width:820px){.app{flex-direction:column}.side{width:auto;display:flex;overflow-x:auto;gap:6px;border-right:0;border-bottom:1px solid var(--bd)}.side a{white-space:nowrap;margin:0}}

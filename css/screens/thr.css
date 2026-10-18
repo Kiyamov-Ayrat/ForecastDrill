@@ -1,0 +1,5 @@
+/* thr.css — интерфейс S-9 «Пороги тревог» */
+.thr-well{max-width:240px}
+.thr-name{width:170px}
+.thr-num{width:90px}
+.thr-msg{min-height:22px}

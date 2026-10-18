@@ -1,0 +1,4 @@
+/* src.css — интерфейс S-8 «Источники данных и паспорт скважины» */
+.drop{border:2px dashed var(--bd);border-radius:12px;padding:26px;text-align:center;color:var(--mut)}
+.src-map{margin-top:18px}
+.src-drop-btn{margin-top:10px}
