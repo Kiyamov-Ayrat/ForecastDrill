@@ -1,0 +1,5 @@
+/* journal.css — интерфейс S-5 «Журнал и разбор инцидента» */
+.journal-replay{position:relative}
+.journal-marker{position:absolute;top:0;bottom:0;left:50%;width:2px;background:var(--acc)}
+.journal-slider{flex:1}
+.journal-result{flex:1}

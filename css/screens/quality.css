@@ -1,0 +1,9 @@
+/* quality.css — интерфейс S-7 «Качество данных» */
+.quality-alert{margin-bottom:14px}
+.quality-pick{display:flex;gap:12px;align-items:flex-end;margin-bottom:14px}
+.quality-modal{border:2px solid var(--acc);margin-bottom:14px}
+.quality-row{cursor:pointer}
+.quality-row:hover{background:var(--bg)}
+.quality-row.on{background:var(--ybg)}
+.quality-detail{border-left:10px solid var(--acc)}
+.quality-hint{display:block;margin-top:10px}

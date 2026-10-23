@@ -1,0 +1,7 @@
+/* base.css — токены темы, сброс, базовая типографика */
+:root{--bg:#f3f5f9;--card:#fff;--tx:#18222e;--mut:#5d6b7e;--bd:#d6dde8;--pri:#1f3a5f;--acc:#2f6fb5;--oa:#fff;
+--g:#17703f;--gbg:#e2f4e9;--y:#8a5a00;--ybg:#fff1cc;--r:#b3261e;--rbg:#fde7e5;color-scheme:light}
+[data-theme=dark]{--bg:#0f151d;--card:#18212d;--tx:#e8edf4;--mut:#9eabbd;--bd:#2b384a;--pri:#9cc3f0;--acc:#5d9be0;--oa:#08121f;
+--g:#58d08f;--gbg:#123124;--y:#f2c35c;--ybg:#3a2e10;--r:#ff8a80;--rbg:#40191a;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 Inter,Roboto,Arial,sans-serif}
