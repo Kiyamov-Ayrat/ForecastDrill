@@ -4,28 +4,37 @@
 // (столбцы: Параметр, Дата, Тип риска — «Норма», «Риск» или «Отклонено») и фильтром по дате;
 // клик по строке показывает комментарий, оставленный супервайзером по этой записи.
 
+// Журнал кэшируется в st.qCache по ключу «скважина|период», чтобы данные
+// не терялись при переходах между экранами (qRows/qFrom/qTo живут только в st).
+function qLoad() {
+  if (!st.qWell) return;
+  const key = '2026-10-22T00|2026-10-23T23';
+  if (!st.qCache) st.qCache = {};
+  if (!st.qCache[key]) st.qCache[key] = buildQJournal(st.qWell, key);
+  qRows = st.qCache[key];
+  qFrom = st.qFrom || ''; qTo = st.qTo || '';
+}
+
 let qRows = [];        // полный журнал параметров выбранной скважины (для обращения по индексу)
-let qFrom = '', qTo = ''; // значения фильтра по дате над таблицей
+let qFrom = '', qTo = ''; // значения фильтра по дате над таблицей (синхронизируются со st)
 
 // Фильтр по дате меняет тип риска: до начала периода записи считаются «Отклонено»,
 // после конца — «Риск»; внутри периода сохраняется исходный статус («Норма» / «Риск»).
-// Метки журнала нормализуем к целому часу, чтобы сравнение с фильтром (datetime-local
-// без минут) было корректным во всех браузерах.
+// Значения фильтра разбираем через qParseLocal (локальное время), как и метки журнала.
 function qType(r) {
-  const t = new Date(r.time); t.setMinutes(0, 0, 0);
-  if (qFrom && t < new Date(qFrom)) return 'Отклонено';
-  if (qTo && t > new Date(qTo)) return 'Риск';
+  if (qFrom && r.time < qParseLocal(qFrom)) return 'Отклонено';
+  if (qTo && r.time > qParseLocal(qTo)) return 'Риск';
   return r.issue === 'Норма' ? 'Норма' : 'Риск';
 }
 
 const QT_BADGE = { 'Норма': B('g', 'Норма'), 'Риск': B('y', 'Риск'), 'Отклонено': B('r', 'Отклонено') };
 
-// Выбор скважины — открыть окно с журналом параметров
+// Выбор скважины — открыть окно с журналом параметров (фейковые демо-данные)
 function qOpenWell() {
   st.qWell = $('qWellSel').value;
   st.selRow = null;
-  qRows = buildQJournal(st.qWell, '2026-10-22T00|2026-10-23T23');
-  qFrom = '2026-10-23T00'; qTo = '2026-10-23T23'; // фильтр по умолчанию: последние сутки
+  st.qFrom = '2026-10-23T00'; st.qTo = '2026-10-23T23'; // фильтр по умолчанию: последние сутки
+  qLoad();
   render();
 }
 
@@ -34,12 +43,13 @@ function qFilter() {
   const a = $('qFrom').value, b = $('qTo').value;
   if (!a || !b) { toast('Укажите начало и конец периода'); return; }
   if (new Date(a) > new Date(b)) { toast('Начало периода позже конца'); return; }
-  qFrom = a; qTo = b; st.selRow = null;
+  st.qFrom = a; st.qTo = b; st.selRow = null;
+  qLoad();
   render();
 }
 
 // Сброс фильтра (показывает все записи журнала со исходным статусом)
-function qReset() { qFrom = ''; qTo = ''; st.selRow = null; render(); }
+function qReset() { st.qFrom = ''; st.qTo = ''; st.selRow = null; qLoad(); render(); }
 
 // Клик по строке журнала — показать комментарий супервайзера
 function qShowRow(i) { st.selRow = (st.selRow === i ? null : i); render(); }
@@ -48,7 +58,17 @@ function qShowRow(i) { st.selRow = (st.selRow === i ? null : i); render(); }
 function qCloseWell() { st.qWell = ''; st.selRow = null; qRows = []; render(); }
 
 registerScreen('quality', () => {
-  // Только супервайзер видит прежнюю сводку качества каналов
+  // Восстанавливаем журнал и фильтр из состояния (данные не теряются при переходах между экранами)
+  if (st.qWell && !qRows.length) qLoad();
+
+  // --- ML-инженер: выбор скважины ---
+  const wellPick = `<div class="card quality-pick">
+    <label>Скважина<select id="qWellSel">${WELLS.map(w => `<option value="${w[0]}" ${w[0] === st.qWell ? 'selected' : ''}>${w[0]} · ${w[1]}</option>`).join('')}</select></label>
+    <button class="btn" onclick="qOpenWell()">Открыть</button>
+    ${st.qWell ? '<button class="btn sec" onclick="qCloseWell()">Закрыть</button>' : ''}
+  </div>`;
+
+  // Только супервайзер видит прежнюю сводку качества каналов телеметрии
   if (st.role === 'sv') return `<div class="alert y quality-alert"><b>Канал «Плотность раствора» недостоверен.</b> Прогнозы, использующие этот канал, отключены (BR-7).</div>
   <div class="card">
     ${T(['Канал','Ед.','Пропуски, %','Задержка, с','Выбросы','Статус'],[
@@ -62,20 +82,14 @@ registerScreen('quality', () => {
     ])}
   </div>`;
 
-  // --- ML-инженер: выбор скважины ---
-  const wellPick = `<div class="card quality-pick">
-    <label>Скважина<select id="qWellSel">${WELLS.map(w => `<option value="${w[0]}" ${w[0] === st.qWell ? 'selected' : ''}>${w[0]} · ${w[1]}</option>`).join('')}</select></label>
-    <button class="btn" onclick="qOpenWell()">Открыть</button>
-    ${st.qWell ? '<button class="btn sec" onclick="qCloseWell()">Закрыть</button>' : ''}
-  </div>`;
-
   if (!st.qWell) return wellPick;
 
   // --- Окно: фильтр по дате (над таблицей) + журнал параметров ---
-  const norm = s => s ? new Date(s) : null;
-  const fA = norm(qFrom), fB = norm(qTo);
-  if (fA) fA.setMinutes(0, 0, 0);
-  if (fB) { fB.setHours(23, 59, 59); } // «Дата по» включает выбранный день целиком
+  // Значения datetime-local («2026-10-23T00») разбираем как локальное время,
+  // иначе Date("...T00") в некоторых браузерах даёт Invalid Date и фильтр не работает.
+  const fA = qFrom ? qParseLocal(qFrom) : null;
+  const fB = qTo ? qParseLocal(qTo) : null;
+  if (fB) fB.setHours(23, 59, 59); // «Дата по» включает выбранный час целиком
   const filtered = qRows.filter(r => (!fA || r.time >= fA) && (!fB || r.time <= fB));
 
   const filterBar = `<div class="card quality-filter">
@@ -95,11 +109,12 @@ registerScreen('quality', () => {
         return `<tr class="quality-row ${i === st.selRow ? 'on' : ''}" onclick="qShowRow(${i})">
           <td>${r.param} <span class="tag">(${r.unit})</span></td>
           <td>${qFmtTime(r.time)}</td>
+          <td><b>${r.value}</b> <span class="tag">${r.unit}</span></td>
           <td>${QT_BADGE[t]}</td>
           <td>${r.comment ? B('y','Есть комментарий') : '<span class="tag">—</span>'}</td>
         </tr>`;
       }).join('')
-    : '<tr><td colspan="4" class="tag">Нет записей в выбранном периоде</td></tr>';
+    : '<tr><td colspan="5" class="tag">Нет записей в выбранном периоде</td></tr>';
 
   const sel = st.selRow != null ? qRows[st.selRow] : null;
   const detail = sel ? `<div class="card quality-detail" style="margin-top:14px">
@@ -110,6 +125,6 @@ registerScreen('quality', () => {
 
   return wellPick + filterBar + `
     <div class="card" style="margin-top:14px"><h3>Параметры: скв. ${st.qWell}</h3>
-      <table class="tbl"><tr><th>Параметр</th><th>Дата</th><th>Тип риска</th><th>Отметка</th></tr>${rowsHtml}</table>
+      <table class="tbl"><tr><th>Параметр</th><th>Дата</th><th>Значение</th><th>Тип риска</th><th>Отметка</th></tr>${rowsHtml}</table>
     </div>${detail}`;
 });
