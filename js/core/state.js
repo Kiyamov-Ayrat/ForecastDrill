@@ -1,5 +1,10 @@
 // state.js — глобальное состояние приложения и справочник экранов/ролей
-const st = { role: null, cur: 'login', f: 'all' };
+const st = {
+  role: null, cur: 'login', f: 'all',
+  qWell: '',        // выбранная скважина в модуле качества данных (S-7)
+  selRow: null,     // выбранная строка журнала параметров (S-7)
+  savedReports: []  // сохранённые отчёты супервайзера (файл + комментарий), видны ML-инженеру и директору (S-6)
+};
 
 // Метаданные экранов: [код интерфейса, название, пользовательские сценарии, функции]
 const META = {
@@ -20,7 +25,7 @@ const META = {
 const ROLES = {
   op: { n: 'Оператор буровой',      home: 'risk',   nav: ['risk'] },
   sv: { n: 'Супервайзер',           home: 'dash',   nav: ['dash', 'well', 'journal', 'rep', 'quality', 'thr'] },
-  ml: { n: 'ML-инженер',            home: 'models', nav: ['models', 'quality', 'src', 'thr'] },
+  ml: { n: 'ML-инженер',            home: 'models', nav: ['models', 'quality', 'rep', 'src', 'thr'] },
   td: { n: 'Технический директор',  home: 'dash',   nav: ['dash', 'rep'] },
   ad: { n: 'Администратор',         home: 'users',  nav: ['users', 'src'] }
 };

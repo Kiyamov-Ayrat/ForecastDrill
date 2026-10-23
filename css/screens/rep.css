@@ -1,2 +1,6 @@
 /* rep.css — интерфейс S-6 «Отчёты» */
 .rep-form{margin-top:14px}
+.rep-file{margin-top:10px}
+.rep-filename{margin-top:8px}
+.rep-view-item{margin-bottom:14px}
+.rep-view-item p{margin:8px 0 0}
