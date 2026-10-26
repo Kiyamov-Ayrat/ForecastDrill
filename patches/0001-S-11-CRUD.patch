@@ -1,0 +1,183 @@
+From 40ec0330c1e6411d2158bdc94a29372cc6bab821 Mon Sep 17 00:00:00 2001
+From: "qwen.ai[bot]" <qwenlm-intl@service.alibaba.com>
+Date: Mon, 26 Oct 2026 19:08:28 +0000
+Subject: [PATCH] =?UTF-8?q?S-11:=20CRUD=20=D0=BF=D0=BE=D0=BB=D1=8C=D0=B7?=
+ =?UTF-8?q?=D0=BE=D0=B2=D0=B0=D1=82=D0=B5=D0=BB=D0=B5=D0=B9=20=D0=B4=D0=BB?=
+ =?UTF-8?q?=D1=8F=20=D0=B0=D0=B4=D0=BC=D0=B8=D0=BD=D0=B8=D1=81=D1=82=D1=80?=
+ =?UTF-8?q?=D0=B0=D1=82=D0=BE=D1=80=D0=B0=20=E2=80=94=20=D1=84=D0=BE=D1=80?=
+ =?UTF-8?q?=D0=BC=D0=B0=20=D1=81=D0=BE=D0=B7=D0=B4=D0=B0=D0=BD=D0=B8=D1=8F?=
+ =?UTF-8?q?=20(=D1=80=D0=BE=D0=BB=D1=8C,=20=D0=BB=D0=BE=D0=B3=D0=B8=D0=BD,?=
+ =?UTF-8?q?=20=D0=BF=D0=B0=D1=80=D0=BE=D0=BB=D1=8C,=20=D0=BD=D0=B0=D0=B7?=
+ =?UTF-8?q?=D0=BD=D0=B0=D1=87=D0=B5=D0=BD=D0=B8=D0=B5=20=D1=81=D0=BA=D0=B2?=
+ =?UTF-8?q?=D0=B0=D0=B6=D0=B8=D0=BD),=20=D1=80=D0=B5=D0=B4=D0=B0=D0=BA?=
+ =?UTF-8?q?=D1=82=D0=B8=D1=80=D0=BE=D0=B2=D0=B0=D0=BD=D0=B8=D0=B5=20=D0=B8?=
+ =?UTF-8?q?=20=D1=83=D0=B4=D0=B0=D0=BB=D0=B5=D0=BD=D0=B8=D0=B5?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ css/screens/users.css |  10 ++++
+ js/core/state.js      |  10 +++-
+ js/screens/users.js   | 108 +++++++++++++++++++++++++++++++++++++-----
+ 3 files changed, 115 insertions(+), 13 deletions(-)
+
+diff --git a/css/screens/users.css b/css/screens/users.css
+index ea90755..58cce2f 100644
+--- a/css/screens/users.css
++++ b/css/screens/users.css
+@@ -1,3 +1,13 @@
+ /* users.css — интерфейс S-11 «Пользователи и роли» */
+ .users-head{justify-content:space-between;margin-bottom:10px}
+ .users-head h3{margin:0}
++/* users.css — интерфейс S-11 «Пользователи и роли» */
++.users-head{justify-content:space-between;margin-bottom:10px}
++.users-head h3{margin:0}
++.users-form{border-left:4px solid var(--acc)}
++.users-form .row label{min-width:180px;flex:1}
++.users-wells{margin-top:12px;display:flex;flex-direction:column;gap:8px}
++.users-all,.users-chk{flex-direction:row;align-items:center;gap:6px;font-size:14px;color:var(--tx)}
++.users-chk input,.users-all input{width:16px;height:16px;margin:0}
++.btn.no-del{background:transparent;color:var(--r);border:1px solid var(--r)}
++.btn.no-del:hover{background:var(--rbg)}
+diff --git a/js/core/state.js b/js/core/state.js
+index 5c6f334..80e5382 100644
+--- a/js/core/state.js
++++ b/js/core/state.js
+@@ -3,7 +3,15 @@ const st = {
+   role: null, cur: 'login', f: 'all',
+   qWell: '',        // выбранная скважина в модуле качества данных (S-7)
+   selRow: null,     // выбранная строка журнала параметров (S-7)
+-  savedReports: []  // сохранённые отчёты супервайзера (файл + комментарий), видны ML-инженеру и директору (S-6)
++  savedReports: [],  // сохранённые отчёты супервайзера (файл + комментарий), видны ML-инженеру и директору (S-6)
++  uForm: null,       // форма создания/редактирования пользователя в S-11: {idx} — редактирование индекса, иначе создание
++  users: [           // справочник пользователей (S-11, UC-13): администратор создаёт/редактирует/удаляет
++    { id: 1, login: 'operator1', role: 'op', wells: ['214-Р'], active: true },
++    { id: 2, login: 'super1',    role: 'sv', wells: ['214-Р', '218-Р', '305-Н'], active: true },
++    { id: 3, login: 'ml1',       role: 'ml', wells: ['*'], active: true },
++    { id: 4, login: 'director1', role: 'td', wells: ['*'], active: false }
++  ],
++  uSeq: 5            // следующий свободный id пользователя
+ };
+ 
+ // Метаданные экранов: [код интерфейса, название, пользовательские сценарии, функции]
+diff --git a/js/screens/users.js b/js/screens/users.js
+index d816ea6..ffa54ee 100644
+--- a/js/screens/users.js
++++ b/js/screens/users.js
+@@ -1,16 +1,100 @@
+ // users.js — интерфейс S-11 «Пользователи и роли» (UC-13, F-12)
+-registerScreen('users', () => `<div class="card">
++// Администратор: создание, редактирование (роль, логин, пароль, скважины) и удаление пользователей.
++
++// Назначение скважин: '*' = все; список кодов — конкретные
++const WELL_CODES = WELLS.map(w => w[0]);
++const ROLE_KEYS = Object.keys(ROLES); // op, sv, ml, td, ad
++
++const wellsText = u => u.wells.includes('*') ? 'Все' : u.wells.join(', ') || '—';
++
++// Открыть форму: без idx — создание, с idx — редактирование пользователя
++function uAdd()  { st.uForm = { login: '', role: 'sv', wells: [], pwd: '', active: true }; render(); }
++function uEdit(id){ const u = st.users.find(x => x.id === id); if (!u) return;
++  st.uForm = { id: u.id, login: u.login, role: u.role, wells: u.wells.slice(), pwd: '', active: u.active }; render(); }
++function uCancel(){ st.uForm = null; render(); }
++function uRole(v){ st.uForm.role = v; render(); }
++function uWell(code, on){ const w = st.uForm.wells;
++  if (on) { if (!w.includes(code)) w.push(code); } else { const i = w.indexOf(code); if (i >= 0) w.splice(i, 1); }
++  render(); }
++function uAll(on){ st.uForm.wells = on ? ['*'] : []; render(); }
++function uActive(on){ st.uForm.active = !!on; render(); }
++
++function uSave(){
++  const f = st.uForm;
++  if ($('uLogin')) f.login = $('uLogin').value;   // актуальные значения полей формы
++  if ($('uPwd'))   f.pwd   = $('uPwd').value;
++  f.login = (f.login || '').trim();
++  if (!f.login)        { $('uMsg').innerHTML = B('r','Ошибка') + ' Укажите логин'; return; }
++  if (!ROLE_KEYS.includes(f.role)) { $('uMsg').innerHTML = B('r','Ошибка') + ' Выберите роль'; return; }
++  if (!f.wells.length) { $('uMsg').innerHTML = B('r','Ошибка') + ' Назначьте хотя бы одну скважину (или «Все»)'; return; }
++  if (f.id == null && !f.pwd) { $('uMsg').innerHTML = B('r','Ошибка') + ' Для нового пользователя задайте пароль'; return; }
++  if (f.pwd && f.pwd.length < 4) { $('uMsg').innerHTML = B('r','Ошибка') + ' Пароль не короче 4 символов'; return; }
++  if (st.users.some(u => u.login.toLowerCase() === f.login.toLowerCase() && u.id !== f.id)) {
++    $('uMsg').innerHTML = B('r','Ошибка') + ' Логин уже занят'; return;
++  }
++  if (f.id == null) {
++    st.users.push({ id: st.uSeq++, login: f.login, role: f.role, wells: f.wells.slice(), active: f.active });
++    toast('Пользователь «' + f.login + '» создан, изменение записано в журнал аудита');
++  } else {
++    const u = st.users.find(x => x.id === f.id);
++    u.login = f.login; u.role = f.role; u.wells = f.wells.slice(); u.active = f.active;
++    toast('Данные пользователя «' + u.login + '» сохранены, изменение записано в журнал аудита');
++  }
++  st.uForm = null; render();
++}
++
++function uDelete(id){
++  const u = st.users.find(x => x.id === id); if (!u) return;
++  if (!confirm('Удалить пользователя «' + u.login + '»?')) return;
++  st.users = st.users.filter(x => x.id !== id);
++  if (st.uForm && st.uForm.id === id) st.uForm = null;
++  toast('Пользователь «' + u.login + '» удалён, изменение записано в журнал аудита');
++  render();
++}
++
++// Форма создания/редактирования над списком пользователей
++function userForm(){
++  const f = st.uForm, isNew = f.id == null;
++  const all = f.wells.includes('*');
++  return `<div class="card users-form" style="margin-bottom:14px">
++    <h3>${isNew ? 'Новый пользователь' : 'Редактирование: ' + f.login}</h3>
++    <div class="row">
++      <label>Логин<input id="uLogin" value="${f.login}" placeholder="например, operator2"></label>
++      <label>Роль<select id="uRoleSel" onchange="uRole(this.value)">
++        ${ROLE_KEYS.map(k => `<option value="${k}" ${k === f.role ? 'selected' : ''}>${ROLES[k].n}</option>`).join('')}
++      </select></label>
++      <label>${isNew ? 'Пароль' : 'Новый пароль (пусто — не менять)'}
++        <input id="uPwd" type="password" placeholder="минимум 4 символа"></label>
++      <label>Активен<input type="checkbox" id="uAct" ${f.active ? 'checked' : ''} onchange="uActive(this.checked)" style="width:20px;height:20px;margin-top:6px"></label>
++    </div>
++    <div class="users-wells">
++      <b class="tag">Скважины</b>
++      <label class="users-all"><input type="checkbox" ${all ? 'checked' : ''} onchange="uAll(this.checked)"> Все скважины</label>
++      ${!all ? `<div class="row">${WELL_CODES.map(c =>
++        `<label class="users-chk"><input type="checkbox" ${f.wells.includes(c) ? 'checked' : ''}
++          onchange="uWell('${c}',this.checked)"> ${c}</label>`).join('')}</div>` : ''}
++    </div>
++    <p id="uMsg" class="tag" style="min-height:22px"></p>
++    <div class="row">
++      <button class="btn" onclick="uSave()">Сохранить</button>
++      <button class="btn sec" onclick="uCancel()">Отмена</button>
++    </div>
++  </div>`;
++}
++
++registerScreen('users', () => (st.uForm ? userForm() : '') + `<div class="card">
+   <div class="row users-head">
+-    <h3>Пользователи</h3>
+-    <button class="btn" onclick="toast('Форма создания пользователя')">+ Добавить</button>
+-  </div>
+-  ${T(['Логин','Роль','Скважины','Активен'],[
+-    ['operator1',`<select><option>Оператор</option><option>Супервайзер</option></select>`,'214-Р','<input type="checkbox" checked>'],
+-    ['super1',`<select><option>Супервайзер</option><option>Оператор</option></select>`,'214-Р, 218-Р, 305-Н','<input type="checkbox" checked>'],
+-    ['ml1',`<select><option>ML-инженер</option></select>`,'Все','<input type="checkbox" checked>'],
+-    ['director1',`<select><option>Технический директор</option></select>`,'Все','<input type="checkbox">']
+-  ])}
+-  <div class="row" style="margin-top:12px">
+-    <button class="btn" onclick="toast('Права сохранены, изменение записано в журнал аудита')">Сохранить</button>
++    <h3>Пользователи (${st.users.length})</h3>
++    <button class="btn" onclick="uAdd()">+ Добавить</button>
+   </div>
++  ${T(['Логин','Роль','Скважины','Активен','Действия'],
++    st.users.map(u => [
++      `<b>${u.login}</b>`,
++      ROLES[u.role] ? ROLES[u.role].n : u.role,
++      wellsText(u),
++      u.active ? B('g','Да') : B('y','Нет'),
++      `<button class="btn sec" onclick="uEdit(${u.id})">Изменить</button>
++       <button class="btn no-del" onclick="uDelete(${u.id})">Удалить</button>`
++    ]))}
++  <p class="tag" style="margin-top:10px">Все изменения записываются в журнал аудита (F-12). Данные демонстрационные.</p>
+ </div>`);
+-- 
+2.39.5
+

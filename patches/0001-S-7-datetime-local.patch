@@ -1,0 +1,203 @@
+From 6bd27f98e1f1b1169b40e3e8e4468dd5b6a44038 Mon Sep 17 00:00:00 2001
+From: "qwen.ai[bot]" <qwenlm-intl@service.alibaba.com>
+Date: Fri, 23 Oct 2026 19:20:42 +0000
+Subject: [PATCH] =?UTF-8?q?S-7:=20=D0=B4=D0=BE=D0=B1=D0=B0=D0=B2=D0=BB?=
+ =?UTF-8?q?=D0=B5=D0=BD=D1=8B=20=D0=BF=D0=B0=D1=80=D0=B0=D0=BC=D0=B5=D1=82?=
+ =?UTF-8?q?=D1=80=D1=8B=20=D1=82=D0=B5=D0=BB=D0=B5=D0=BC=D0=B5=D1=82=D1=80?=
+ =?UTF-8?q?=D0=B8=D0=B8=20=D0=B8=20=D1=80=D0=B5=D0=B0=D0=BB=D0=B8=D1=81?=
+ =?UTF-8?q?=D1=82=D0=B8=D1=87=D0=BD=D1=8B=D0=B5=20=D1=84=D0=B5=D0=B9=D0=BA?=
+ =?UTF-8?q?=D0=BE=D0=B2=D1=8B=D0=B5=20=D0=B4=D0=B0=D0=BD=D0=BD=D1=8B=D0=B5?=
+ =?UTF-8?q?=20=D0=B2=20=D0=B6=D1=83=D1=80=D0=BD=D0=B0=D0=BB;=20=D0=B8?=
+ =?UTF-8?q?=D1=81=D0=BF=D1=80=D0=B0=D0=B2=D0=BB=D0=B5=D0=BD=20=D0=BF=D0=B0?=
+ =?UTF-8?q?=D1=80=D1=81=D0=B8=D0=BD=D0=B3=20datetime-local=20=D0=B2=20?=
+ =?UTF-8?q?=D1=84=D0=B8=D0=BB=D1=8C=D1=82=D1=80=D0=B5?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ js/core/data.js       | 24 ++++++++++++++--
+ js/screens/quality.js | 65 ++++++++++++++++++++++++++-----------------
+ 2 files changed, 62 insertions(+), 27 deletions(-)
+
+diff --git a/js/core/data.js b/js/core/data.js
+index 02cae16..14bd8ac 100644
+--- a/js/core/data.js
++++ b/js/core/data.js
+@@ -26,9 +26,26 @@ const QPARAMS = [
+   ['Расход на входе', 'л/с'],
+   ['Расход на выходе', 'л/с'],
+   ['Уровень в ёмкости 1', 'м³'],
+-  ['Плотность раствора', 'г/см³']
++  ['Плотность раствора', 'г/см³'],
++  ['Обороты ротора', 'об/мин'],
++  ['Скорость проходки', 'м/ч'],
++  ['Температура раствора на выходе', '°C']
+ ];
+ 
++// Диапазоны реалистичных значений для параметров журнала (фейковые данные, мин/макс)
++const QRANGE = {
++  'Нагрузка на крюке': [120, 260],
++  'Момент на роторе': [8, 34],
++  'Давление на стояке': [12, 30],
++  'Расход на входе': [30, 55],
++  'Расход на выходе': [28, 52],
++  'Уровень в ёмкости 1': [2, 14],
++  'Плотность раствора': [1.08, 1.45],
++  'Обороты ротора': [60, 140],
++  'Скорость проходки': [4, 28],
++  'Температура раствора на выходе': [28, 62]
++};
++
+ // Осложнения, которые могут быть зафиксированы по строке журнала
+ const QISSUES = ['Прихват', 'Флюидопроявление', 'Поглощение'];
+ 
+@@ -67,7 +84,10 @@ function buildQJournal(well, periodKey) {
+   QPARAMS.forEach(([param, unit], pi) => {
+     hrs.forEach((d, hi) => {
+       const rnd = qseed(well + param + qFmtTime(d));
+-      const v = (5 + pi * 7 + rnd() * 60).toFixed(1).replace('.', ',');
++      // значение — в реалистичном диапазоне параметра (QRANGE)
++      const [lo, hi2] = QRANGE[param] || [0, 100];
++      const dec = (hi2 - lo) < 20 ? 2 : 0;
++      const v = (lo + rnd() * (hi2 - lo)).toFixed(dec).replace('.', ',');
+       // около 12 % строк — записи с осложнением, остальные — норма
+       const isIssue = rnd() < 0.12;
+       const issue = isIssue ? QISSUES[(pi + hi) % 3] : 'Норма';
+diff --git a/js/screens/quality.js b/js/screens/quality.js
+index c954958..2275ce3 100644
+--- a/js/screens/quality.js
++++ b/js/screens/quality.js
+@@ -4,28 +4,37 @@
+ // (столбцы: Параметр, Дата, Тип риска — «Норма», «Риск» или «Отклонено») и фильтром по дате;
+ // клик по строке показывает комментарий, оставленный супервайзером по этой записи.
+ 
++// Журнал кэшируется в st.qCache по ключу «скважина|период», чтобы данные
++// не терялись при переходах между экранами (qRows/qFrom/qTo живут только в st).
++function qLoad() {
++  if (!st.qWell) return;
++  const key = '2026-10-22T00|2026-10-23T23';
++  if (!st.qCache) st.qCache = {};
++  if (!st.qCache[key]) st.qCache[key] = buildQJournal(st.qWell, key);
++  qRows = st.qCache[key];
++  qFrom = st.qFrom || ''; qTo = st.qTo || '';
++}
++
+ let qRows = [];        // полный журнал параметров выбранной скважины (для обращения по индексу)
+-let qFrom = '', qTo = ''; // значения фильтра по дате над таблицей
++let qFrom = '', qTo = ''; // значения фильтра по дате над таблицей (синхронизируются со st)
+ 
+ // Фильтр по дате меняет тип риска: до начала периода записи считаются «Отклонено»,
+ // после конца — «Риск»; внутри периода сохраняется исходный статус («Норма» / «Риск»).
+-// Метки журнала нормализуем к целому часу, чтобы сравнение с фильтром (datetime-local
+-// без минут) было корректным во всех браузерах.
++// Значения фильтра разбираем через qParseLocal (локальное время), как и метки журнала.
+ function qType(r) {
+-  const t = new Date(r.time); t.setMinutes(0, 0, 0);
+-  if (qFrom && t < new Date(qFrom)) return 'Отклонено';
+-  if (qTo && t > new Date(qTo)) return 'Риск';
++  if (qFrom && r.time < qParseLocal(qFrom)) return 'Отклонено';
++  if (qTo && r.time > qParseLocal(qTo)) return 'Риск';
+   return r.issue === 'Норма' ? 'Норма' : 'Риск';
+ }
+ 
+ const QT_BADGE = { 'Норма': B('g', 'Норма'), 'Риск': B('y', 'Риск'), 'Отклонено': B('r', 'Отклонено') };
+ 
+-// Выбор скважины — открыть окно с журналом параметров
++// Выбор скважины — открыть окно с журналом параметров (фейковые демо-данные)
+ function qOpenWell() {
+   st.qWell = $('qWellSel').value;
+   st.selRow = null;
+-  qRows = buildQJournal(st.qWell, '2026-10-22T00|2026-10-23T23');
+-  qFrom = '2026-10-23T00'; qTo = '2026-10-23T23'; // фильтр по умолчанию: последние сутки
++  st.qFrom = '2026-10-23T00'; st.qTo = '2026-10-23T23'; // фильтр по умолчанию: последние сутки
++  qLoad();
+   render();
+ }
+ 
+@@ -34,12 +43,13 @@ function qFilter() {
+   const a = $('qFrom').value, b = $('qTo').value;
+   if (!a || !b) { toast('Укажите начало и конец периода'); return; }
+   if (new Date(a) > new Date(b)) { toast('Начало периода позже конца'); return; }
+-  qFrom = a; qTo = b; st.selRow = null;
++  st.qFrom = a; st.qTo = b; st.selRow = null;
++  qLoad();
+   render();
+ }
+ 
+ // Сброс фильтра (показывает все записи журнала со исходным статусом)
+-function qReset() { qFrom = ''; qTo = ''; st.selRow = null; render(); }
++function qReset() { st.qFrom = ''; st.qTo = ''; st.selRow = null; qLoad(); render(); }
+ 
+ // Клик по строке журнала — показать комментарий супервайзера
+ function qShowRow(i) { st.selRow = (st.selRow === i ? null : i); render(); }
+@@ -48,7 +58,17 @@ function qShowRow(i) { st.selRow = (st.selRow === i ? null : i); render(); }
+ function qCloseWell() { st.qWell = ''; st.selRow = null; qRows = []; render(); }
+ 
+ registerScreen('quality', () => {
+-  // Только супервайзер видит прежнюю сводку качества каналов
++  // Восстанавливаем журнал и фильтр из состояния (данные не теряются при переходах между экранами)
++  if (st.qWell && !qRows.length) qLoad();
++
++  // --- ML-инженер: выбор скважины ---
++  const wellPick = `<div class="card quality-pick">
++    <label>Скважина<select id="qWellSel">${WELLS.map(w => `<option value="${w[0]}" ${w[0] === st.qWell ? 'selected' : ''}>${w[0]} · ${w[1]}</option>`).join('')}</select></label>
++    <button class="btn" onclick="qOpenWell()">Открыть</button>
++    ${st.qWell ? '<button class="btn sec" onclick="qCloseWell()">Закрыть</button>' : ''}
++  </div>`;
++
++  // Только супервайзер видит прежнюю сводку качества каналов телеметрии
+   if (st.role === 'sv') return `<div class="alert y quality-alert"><b>Канал «Плотность раствора» недостоверен.</b> Прогнозы, использующие этот канал, отключены (BR-7).</div>
+   <div class="card">
+     ${T(['Канал','Ед.','Пропуски, %','Задержка, с','Выбросы','Статус'],[
+@@ -62,20 +82,14 @@ registerScreen('quality', () => {
+     ])}
+   </div>`;
+ 
+-  // --- ML-инженер: выбор скважины ---
+-  const wellPick = `<div class="card quality-pick">
+-    <label>Скважина<select id="qWellSel">${WELLS.map(w => `<option value="${w[0]}" ${w[0] === st.qWell ? 'selected' : ''}>${w[0]} · ${w[1]}</option>`).join('')}</select></label>
+-    <button class="btn" onclick="qOpenWell()">Открыть</button>
+-    ${st.qWell ? '<button class="btn sec" onclick="qCloseWell()">Закрыть</button>' : ''}
+-  </div>`;
+-
+   if (!st.qWell) return wellPick;
+ 
+   // --- Окно: фильтр по дате (над таблицей) + журнал параметров ---
+-  const norm = s => s ? new Date(s) : null;
+-  const fA = norm(qFrom), fB = norm(qTo);
+-  if (fA) fA.setMinutes(0, 0, 0);
+-  if (fB) { fB.setHours(23, 59, 59); } // «Дата по» включает выбранный день целиком
++  // Значения datetime-local («2026-10-23T00») разбираем как локальное время,
++  // иначе Date("...T00") в некоторых браузерах даёт Invalid Date и фильтр не работает.
++  const fA = qFrom ? qParseLocal(qFrom) : null;
++  const fB = qTo ? qParseLocal(qTo) : null;
++  if (fB) fB.setHours(23, 59, 59); // «Дата по» включает выбранный час целиком
+   const filtered = qRows.filter(r => (!fA || r.time >= fA) && (!fB || r.time <= fB));
+ 
+   const filterBar = `<div class="card quality-filter">
+@@ -95,11 +109,12 @@ registerScreen('quality', () => {
+         return `<tr class="quality-row ${i === st.selRow ? 'on' : ''}" onclick="qShowRow(${i})">
+           <td>${r.param} <span class="tag">(${r.unit})</span></td>
+           <td>${qFmtTime(r.time)}</td>
++          <td><b>${r.value}</b> <span class="tag">${r.unit}</span></td>
+           <td>${QT_BADGE[t]}</td>
+           <td>${r.comment ? B('y','Есть комментарий') : '<span class="tag">—</span>'}</td>
+         </tr>`;
+       }).join('')
+-    : '<tr><td colspan="4" class="tag">Нет записей в выбранном периоде</td></tr>';
++    : '<tr><td colspan="5" class="tag">Нет записей в выбранном периоде</td></tr>';
+ 
+   const sel = st.selRow != null ? qRows[st.selRow] : null;
+   const detail = sel ? `<div class="card quality-detail" style="margin-top:14px">
+@@ -110,6 +125,6 @@ registerScreen('quality', () => {
+ 
+   return wellPick + filterBar + `
+     <div class="card" style="margin-top:14px"><h3>Параметры: скв. ${st.qWell}</h3>
+-      <table class="tbl"><tr><th>Параметр</th><th>Дата</th><th>Тип риска</th><th>Отметка</th></tr>${rowsHtml}</table>
++      <table class="tbl"><tr><th>Параметр</th><th>Дата</th><th>Значение</th><th>Тип риска</th><th>Отметка</th></tr>${rowsHtml}</table>
+     </div>${detail}`;
+ });
+-- 
+2.39.5
+
