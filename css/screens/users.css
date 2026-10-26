@@ -1,3 +1,13 @@
 /* users.css — интерфейс S-11 «Пользователи и роли» */
 .users-head{justify-content:space-between;margin-bottom:10px}
 .users-head h3{margin:0}
+/* users.css — интерфейс S-11 «Пользователи и роли» */
+.users-head{justify-content:space-between;margin-bottom:10px}
+.users-head h3{margin:0}
+.users-form{border-left:4px solid var(--acc)}
+.users-form .row label{min-width:180px;flex:1}
+.users-wells{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.users-all,.users-chk{flex-direction:row;align-items:center;gap:6px;font-size:14px;color:var(--tx)}
+.users-chk input,.users-all input{width:16px;height:16px;margin:0}
+.btn.no-del{background:transparent;color:var(--r);border:1px solid var(--r)}
+.btn.no-del:hover{background:var(--rbg)}
