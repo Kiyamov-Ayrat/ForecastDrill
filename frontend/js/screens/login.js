@@ -1,6 +1,6 @@
 // login.js — интерфейс S-1 «Вход в систему» (UC-1, F-12)
-registerScreen('login', () => <!-- разметка формы входа: уберите поле «Демо-роль» -->
-<div class="login"><div class="card">
+// Форма входа: только логин и пароль (поле «Демо-роль» удалено — вход через POST /auth/login)
+registerScreen('login', () => `<div class="login"><div class="card">
   <h2 style="margin:0">Вход в систему</h2>
   <label>Логин<input id="lg" autocomplete="username"></label>
   <label>Пароль<input id="pw" type="password" autocomplete="current-password"
@@ -8,7 +8,7 @@ registerScreen('login', () => <!-- разметка формы входа: уб�
   <div id="err" role="alert" hidden></div>
   <button class="btn" id="loginBtn" onclick="login()">Войти</button>
   <span class="tag">S-1 · UC-1 · F-12</span>
-</div></div>
+</div></div>`);
 
 
 async function login() {
@@ -16,13 +16,17 @@ async function login() {
   const p = document.getElementById('pw').value;
   if (!l || !p) return FD.msg('err', 'Введите логин и пароль');
   if (!/^[A-Za-z0-9_.-]{3,32}$/.test(l)) return FD.msg('err', 'Логин: 3–32 символа (латиница, цифры, _ . -)');
+  const lock = Auth.check();                       // локальная блокировка после 5 неудачных попыток
+  if (lock) return FD.msg('err', lock);
   const btn = document.getElementById('loginBtn');
   btn.disabled = true;
   try {
     const r = await api('/auth/login', { method: 'POST', body: { login: l, password: p } });
+    Auth.ok();
     Session.save(r.access_token, r.user);
     await startSession(r.user);
   } catch (e) {
+    if (e.status === 401 || e.status === 429) Auth.fail();   // локальный счётчик неудачных попыток
     FD.msg('err', e.message);          // «Неверный логин или пароль», блокировка, отключённая запись
     btn.disabled = false;
   }
