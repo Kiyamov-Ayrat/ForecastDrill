@@ -2,7 +2,7 @@
 registerScreen('well', () => WB() +
   `<div class="alert r"><b>⚠ Поглощение: 78 %</b> · красный уровень · 14:32 · ${B('r','активно')}</div>
    <div class="grid g2" style="margin-top:14px">
-     <div class="card"><h3>Индекс риска</h3>${spark(RISK,{th:1})}</div>
+<!--     <div class="card"><h3>Индекс риска</h3>${spark(RISK,{th:1})}</div>-->
      <div class="card"><h3>Почему тревога: вклад параметров</h3>
        ${[['Разница расходов (выход – вход)',42],['Уровень в ёмкостях',31],['Давление на стояке',14],['Скорость проходки',8],['Прочее',5]]
          .map(a => `<div class="row" style="justify-content:space-between"><span>${a[0]}</span><b>${a[1]} %</b></div><div class="bar"><i style="width:${a[1]}%;background:var(--acc)"></i></div>`).join('')}
@@ -19,3 +19,4 @@ registerScreen('well', () => WB() +
        ['13:05','Флюидопроявление',B('y','Жёлтый'),B('g','Закрыто'),'Подтверждено']
      ])}
    </div>`);
+wellView()
