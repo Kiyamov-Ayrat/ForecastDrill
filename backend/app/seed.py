@@ -26,7 +26,7 @@ async def seed(s: AsyncSession) -> None:
     demo = [("operator1", "Operator#2026", Role.operator, wells[:1], True),
             ("super1", "Super#2026", Role.supervisor, wells[:3], True),
             ("ml1", "MlEng#2026", Role.ml_engineer, [], True),
-            ("director1", "Director#2026", Role.director, [], False),
+            ("director1", "Director#2026", Role.director, [], True),
             ("admin1", "Admin#2026", Role.admin, [], True)]
     for login, pw, role, ws, active in demo:
         s.add(User(login=login, password_hash=hash_password(pw), role=role, wells=ws, is_active=active))

@@ -23,7 +23,7 @@ async function login() {
   try {
     const r = await api('/auth/login', { method: 'POST', body: { login: l, password: p } });
     Auth.ok();
-    Session.save(r.access_token, r.user);
+    Session.save(r.access_token, r.user, r.expires_in);
     await startSession(r.user);
   } catch (e) {
     if (e.status === 401 || e.status === 429) Auth.fail();   // локальный счётчик неудачных попыток
