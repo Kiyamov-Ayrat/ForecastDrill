@@ -5,4 +5,4 @@ $('themeBtn').addEventListener('click', () => {
   d.dataset.theme = d.dataset.theme === 'dark' ? '' : 'dark';
 });
 
-render();
+boot();

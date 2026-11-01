@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Рисунок 4 – Схема взаимодействия компонентов</title>
+<style>
+  :root { color-scheme: light; }
+  body { margin: 0; padding: 24px; background: #ffffff; color: #111111; font-family: Arial, Helvetica, sans-serif; }
+  figure { margin: 0 auto; max-width: 1500px; }
+  svg { width: 100%; height: auto; display: block; }
+  figcaption { text-align: center; margin-top: 12px; font-size: 16px; }
+  .lbl { paint-order: stroke; stroke: #ffffff; stroke-width: 4px; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+<figure>
+  <svg id="sch" viewBox="0 0 1400 760" xmlns="http://www.w3.org/2000/svg" role="img"
+       aria-label="Схема взаимодействия компонентов программного средства БурПрогноз">
+    <defs>
+      <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+        <path d="M0,0 L10,4 L0,8 z" fill="#44546a"/>
+      </marker>
+    </defs>
+  </svg>
+  <figcaption>Рисунок 4 – Схема взаимодействия компонентов ПС «БурПрогноз»</figcaption>
+</figure>
+
+<script>
+  const NS = "http://www.w3.org/2000/svg", svg = document.getElementById("sch");
+  const el = (n, a, t) => { const e = document.createElementNS(NS, n);
+    for (const k in a) e.setAttribute(k, a[k]); if (t !== undefined) e.textContent = t; return e; };
+  const add = e => (svg.appendChild(e), e);
+
+  const C = {
+    comp:   { f: "#eaf1fb", s: "#1f3a5f", t: "#1f3a5f" },
+    data:   { f: "#e2f4e9", s: "#1b6b52", t: "#1b6b52" },
+    ml:     { f: "#fdf0e4", s: "#8a3b12", t: "#8a3b12" },
+    client: { f: "#f1ecfa", s: "#5b3f8c", t: "#5b3f8c" },
+    ext:    { f: "#ffffff", s: "#555555", t: "#222222" }
+  };
+  const LINE = "#44546a";
+
+  function zone(x, y, w, h, label, o = {}) {
+    add(el("rect", { x, y, width: w, height: h, rx: 14, fill: o.f || "#fafafa", stroke: o.s || "#888888",
+      "stroke-width": o.w || 1.6, "stroke-dasharray": o.d ? "7 5" : "" }));
+    add(el("text", { x: o.lx !== undefined ? o.lx : x + w / 2, y: o.ly !== undefined ? o.ly : y + 22,
+      "text-anchor": o.anchor || "middle", "font-size": 14, "font-weight": 700, fill: o.t || "#444444" }, label));
+  }
+  function box(x, y, w, h, c, title, lines = [], dash = false) {
+    add(el("rect", { x, y, width: w, height: h, rx: 9, fill: C[c].f, stroke: C[c].s, "stroke-width": 2,
+      "stroke-dasharray": dash ? "6 4" : "" }));
+    add(el("text", { x: x + w / 2, y: y + 20, "text-anchor": "middle", "font-size": 13.5, "font-weight": 700, fill: C[c].t }, title));
+    lines.forEach((l, i) => add(el("text", { x: x + w / 2, y: y + 40 + i * 16, "text-anchor": "middle",
+      "font-size": 11.5, fill: "#222222" }, l)));
+  }
+  function arr(pts, o = {}) {
+    const a = { points: pts.map(p => p.join(",")).join(" "), fill: "none", stroke: LINE, "stroke-width": 1.8,
+      "stroke-linejoin": "round", "marker-end": "url(#ah)" };
+    if (o.d) a["stroke-dasharray"] = "6 4";
+    if (o.b) a["marker-start"] = "url(#ah)";
+    add(el("polyline", a));
+  }
+  const lbl = (x, y, t, anchor = "middle", size = 11.5) =>
+    add(el("text", { x, y, "text-anchor": anchor, "font-size": size, fill: "#222222", class: "lbl" }, t));
+
+  /* ---------- Зоны ---------- */
+  zone(20, 50, 200, 570, "Внешние системы заказчика", { d: true });
+  zone(290, 50, 740, 570, "", { f: "#f7faff", s: "#1f3a5f", w: 2.5 });
+  add(el("text", { x: 310, y: 75, "font-size": 14, "font-weight": 700, fill: "#1f3a5f" },
+    "Серверная часть ПС «БурПрогноз» (контейнеры Docker, контур заказчика)"));
+  zone(1185, 50, 205, 570, "Клиентская часть", { d: true });
+  zone(290, 640, 740, 105, "", { d: true });
+  add(el("text", { x: 300, y: 737, "font-size": 13, "font-weight": 700, fill: "#444444" }, "Инфраструктура и сопровождение"));
+
+  /* ---------- Стрелки (под блоками) ---------- */
+  arr([[208, 145], [310, 145]]);                                    // ГТИ -> адаптер
+  arr([[490, 145], [530, 145]]);                                    // адаптер -> очередь
+  arr([[690, 145], [730, 145]]);                                    // очередь -> расчёт
+  arr([[760, 190], [760, 240], [580, 240], [580, 290]]);            // расчёт -> БД
+  arr([[875, 290], [875, 190]]);                                    // ML-контур -> расчёт (версия модели)
+  arr([[650, 335], [740, 335]], { b: true });                       // БД <-> ML-контур
+  arr([[875, 380], [875, 430]], { b: true });                       // ML-контур <-> API
+  arr([[740, 450], [480, 450], [480, 380]], { b: true });           // API <-> БД
+  arr([[208, 480], [740, 480]]);                                    // паспорт -> API
+  arr([[208, 572], [250, 572], [250, 545], [740, 545]], { d: true, b: true });  // LDAP <-> API
+  arr([[1010, 145], [1045, 145]], { d: true });                     // расчёт -> почта/webhook
+  arr([[1010, 495], [1045, 495]], { b: true });                     // API <-> Nginx
+  arr([[1145, 495], [1200, 495]], { b: true });                     // Nginx <-> интерфейс
+  arr([[1287, 320], [1287, 380]], { b: true });                     // пользователи <-> интерфейс
+  arr([[400, 670], [400, 620]]);                                    // GitLab -> развёртывание
+  arr([[850, 620], [850, 670]]);                                    // сервер -> мониторинг
+
+  /* ---------- Блоки ---------- */
+  box(32, 100, 176, 90, "ext", "Станция ГТИ", ["сервер WITSML", "телеметрия бурения"]);
+  box(32, 440, 176, 80, "ext", "Паспорт скважины", ["файлы CSV, JSON, XLSX", "API систем заказчика"]);
+  box(32, 545, 176, 55, "ext", "Каталог LDAP / AD", ["(по настройке)"], true);
+
+  box(310, 100, 180, 90, "comp", "Адаптеры приёма", ["WITS / WITSML (asyncio)", "проверка данных (F-1)"]);
+  box(530, 100, 160, 90, "comp", "RabbitMQ", ["очередь сообщений", "буфер данных"]);
+  box(730, 100, 280, 90, "comp", "Сервис признаков и расчёта", ["режим бурения, признаки, качество (F-2, F-3)", "LightGBM + SHAP: 3 прогноза, индекс риска"]);
+
+  box(310, 290, 340, 90, "data", "PostgreSQL + TimescaleDB", ["телеметрия, прогнозы, предупреждения,", "справочники, пороги, паспорта скважин"]);
+  box(740, 290, 270, 90, "ml", "Контур обучения моделей", ["scikit-learn · LightGBM · SHAP", "MLflow: реестр версий и метрики", "DVC: версии данных"]);
+
+  box(740, 430, 270, 130, "comp", "API-сервис (FastAPI)", ["REST и WebSocket", "JWT, ролевая модель (RBAC)", "паспорта, пороги, отчёты, пользователи", "UC-1…UC-13"]);
+
+  box(1045, 100, 100, 90, "ext", "E-mail", ["webhook:", "уведомления", "о тревогах"], true);
+  box(1045, 430, 100, 130, "comp", "Nginx", ["обратный", "прокси,", "HTTPS"]);
+
+  // Пользователи
+  add(el("rect", { x: 1200, y: 100, width: 175, height: 220, rx: 9, fill: C.ext.f, stroke: C.ext.s, "stroke-width": 2 }));
+  add(el("text", { x: 1287, y: 120, "text-anchor": "middle", "font-size": 13.5, "font-weight": 700, fill: "#222222" }, "Пользователи (5 ролей)"));
+  ["Оператор буровой", "Супервайзер / геолог", "ML-инженер", "Технический директор", "Администратор"].forEach((r, i) => {
+    add(el("rect", { x: 1210, y: 135 + i * 36, width: 155, height: 28, rx: 14, fill: "#f1ecfa", stroke: "#5b3f8c", "stroke-width": 1.3 }));
+    add(el("text", { x: 1287, y: 154 + i * 36, "text-anchor": "middle", "font-size": 12, fill: "#222222" }, r));
+  });
+  box(1200, 380, 175, 180, "client", "Веб-интерфейс (SPA)", ["React + TypeScript", "Ant Design", "Apache ECharts", "WebSocket-клиент", "экраны S-1…S-11"]);
+
+  // Инфраструктура
+  box(310, 668, 330, 55, "ext", "GitLab CI/CD", ["сборка, тесты, образы Docker"]);
+  box(680, 668, 330, 55, "ext", "Prometheus + Grafana", ["метрики и журналы (MT-2)"]);
+
+  /* ---------- Подписи к стрелкам ---------- */
+  lbl(264, 124, "телеметрия"); lbl(264, 137, "WITS/WITSML");
+  lbl(668, 232, "запись данных и прогнозов");
+  lbl(885, 245, "активная версия модели", "start");
+  lbl(695, 354, "данные для"); lbl(695, 367, "обучения");
+  lbl(885, 402, "запуск переобучения,", "start"); lbl(885, 415, "метрики моделей", "start");
+  lbl(610, 444, "SQL: чтение и запись");
+  lbl(300, 474, "паспорт скважины (файл / API)", "start");
+  lbl(300, 538, "аутентификация (LDAP / AD, по настройке)", "start");
+  lbl(1095, 586, "HTTPS (TLS 1.2+)"); lbl(1095, 600, "и WebSocket");
+  lbl(1297, 354, "работа в браузере", "start", 11);
+  lbl(408, 650, "развёртывание", "start");
+  lbl(858, 650, "метрики, журналы", "start");
+
+  /* ---------- Условные обозначения ---------- */
+  const lx = 1050, ly = 665;
+  const sw = [["comp", "компоненты ПС"], ["data", "хранилище данных"], ["ml", "контур обучения"], ["client", "клиентская часть"]];
+  sw.forEach((s, i) => {
+    add(el("rect", { x: lx, y: ly + i * 20 - 10, width: 16, height: 12, rx: 3, fill: C[s[0]].f, stroke: C[s[0]].s, "stroke-width": 1.5 }));
+    add(el("text", { x: lx + 24, y: ly + i * 20, "font-size": 11.5, fill: "#222222" }, s[1]));
+  });
+  add(el("line", { x1: lx + 175, y1: ly - 4, x2: lx + 215, y2: ly - 4, stroke: LINE, "stroke-width": 1.8, "marker-end": "url(#ah)" }));
+  add(el("text", { x: lx + 222, y: ly, "font-size": 11.5, fill: "#222222" }, "поток данных"));
+  add(el("line", { x1: lx + 175, y1: ly + 16, x2: lx + 215, y2: ly + 16, stroke: LINE, "stroke-width": 1.8, "stroke-dasharray": "6 4", "marker-end": "url(#ah)" }));
+  add(el("text", { x: lx + 222, y: ly + 20, "font-size": 11.5, fill: "#222222" }, "по настройке"));
+  add(el("rect", { x: lx + 175, y: ly + 30, width: 16, height: 12, rx: 3, fill: "#ffffff", stroke: "#555555", "stroke-width": 1.5 }));
+  add(el("text", { x: lx + 199, y: ly + 40, "font-size": 11.5, fill: "#222222" }, "внешние системы"));
+</script>
+</body>
+</html>

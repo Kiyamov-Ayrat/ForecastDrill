@@ -59,3 +59,8 @@ js/
 например: `python3 -m http.server 8000`, затем http://localhost:8000).
 
 Демо-вход: логин/пароль любые непустые; роль выбирается в списке. Данные демонстрационные.
+
+```
+docker compose exec backend python -m app.cli create --login ivanov --password 'Str0ng#Pass1' --role supervisor --wells 214-Р,218-Р
+docker compose exec backend python -m app.cli list
+```
