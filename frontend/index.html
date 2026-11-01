@@ -32,14 +32,12 @@
 <div id="toast"></div>
 
 <!-- Ядро приложения -->
-<script src="js/core/safe.js"></script>
 <script src="js/core/utils.js"></script>
 <script src="js/core/state.js"></script>
 <script src="js/core/data.js"></script>
 <script src="js/core/charts.js"></script>
 <script src="js/core/router.js"></script>
 <script src="js/core/api.js"></script>
-<script src="js/core/bridge.js"></script>
 
 
 <!-- Экраны (интерфейсы) -->
@@ -56,6 +54,10 @@
 <script src="js/screens/users.js"></script>
 <script src="js/screens/live-views.js"></script>
 
+<!-- Обёртки безопасности: экранирование, журнал ошибок, доступ по ролям, блокировка входа.
+     Загружаются ПОСЛЕДНИМИ — safe.js переопределяет go()/render(), а bridge.js переопределяет go(). -->
+<script src="js/core/safe.js"></script>
+<script src="js/core/bridge.js"></script>
 
 <!-- Точка входа: сборка реестра экранов и первый рендер -->
 <script src="js/main.js"></script>
