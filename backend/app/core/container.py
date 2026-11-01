@@ -15,7 +15,7 @@ def build_audit(s: AsyncSession) -> AuditService:
 
 
 def build_auth_service(s: AsyncSession) -> AuthService:
-    return AuthService(UserRepository(s), build_audit(s))
+    return AuthService(UserRepository(s), build_audit(s), WellRepository(s))
 
 
 def build_risk_service(s: AsyncSession, predictor: RiskPredictor) -> RiskService:
