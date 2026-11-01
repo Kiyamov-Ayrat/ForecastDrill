@@ -33,7 +33,7 @@ function alertBanner(s) {
   const why = s.reasons.slice(0, 2).map(r => `${FD.esc(r.feature)} (${r.contribution} %)`).join(', ');
   return `<div class="alert ${s.level === 'red' ? 'r' : 'y'}" role="alert"><div class="row">
     <b style="font-size:22px">⚠ ${LEVEL_RU[s.level]}: ${TYPE_RU[t.type].toLowerCase()}</b>${FD.badge(s.level, s.level === 'red' ? 'красный уровень' : 'жёлтый уровень')}</div>
-    <p style="font-size:18px;margin:8px 0 0"><b>Основной вклад:</b> ${why}.<br><b>Рекомендация:</b> ${FD.esc(s.recommendation || '')} <span class="tag">(демо-текст)</span></p></div>`;
+    <p style="font-size:18px;margin:8px 0 0"><b>Основной вклад:</b> ${why}.<br><b>Рекомендация:</b> ${FD.esc(s.recommendation || '')}</p></div>`;
 }
 
 /* S-2. Экран оператора (UC-2, UC-3, UC-4) */
@@ -63,7 +63,7 @@ function wellView() {
     <td>${STATUS_RU[a.status]}</td><td>${a.status === 'active'
       ? `<button data-fb class="btn ok" onclick="sendFeedback('${a.id}','confirmed')">Подтвердить</button> <button data-fb class="btn sec" onclick="sendFeedback('${a.id}','false_alarm')">Ложная</button>`
       : (a.verdict ? STATUS_RU[a.verdict] : '—')}</td></tr>`).join('');
-  const demo = (typeof PIT !== 'undefined')
+  const demo = (typeof PIT !== 'undefined' && PIT.length > 1)      // графики параметров: только если телеметрия ещё не подключена
     ? `<div class="grid g3" style="margin-top:14px"><div class="card"><h3>Уровень в ёмкостях</h3>${FD.spark(PIT, { h: 80 })}</div>
        <div class="card"><h3>Расход на выходе</h3>${FD.spark(FLOW, { h: 80 })}</div><div class="card"><h3>Давление на стояке</h3>${FD.spark(SPP, { h: 80 })}</div></div>
        <p class="tag">Графики параметров: демо-данные до подключения модуля телеметрии.</p>` : '';
@@ -81,8 +81,7 @@ async function sendFeedback(id, verdict) {
     toast(verdict === 'confirmed' ? 'Отметка сохранена: подтверждено' : 'Отметка сохранена: ложная тревога');
     if (typeof Alerts !== 'undefined') Alerts.mark(verdict === 'confirmed' ? 'ok' : 'false');
     await Bridge.loadRisk();
-  } catch (e) { toast(e.message); }
-  render();
+  } catch (e) { toast(e.message); render(); }                                      // при ошибке кнопки вернутся активными (новый рендер)
 }
 
 /* S-9. Пороги тревог (UC-6) */

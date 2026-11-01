@@ -99,10 +99,4 @@ const Auth = {
     this._set(s); return `Неверный логин или пароль. Осталось попыток: ${this.MAX - s.n}`; },
   ok() { this._set({}); }
 };
-const DEMO_USERS = {   // демонстрационные учётные записи (в промышленной версии проверка на сервере)
-  operator1: { pass: 'Operator#2026', role: 'op', active: true },
-  super1:    { pass: 'Super#2026',    role: 'sv', active: true },
-  ml1:       { pass: 'MlEng#2026',    role: 'ml', active: true },
-  director1: { pass: 'Director#2026', role: 'td', active: false },
-  admin1:    { pass: 'Admin#2026',    role: 'ad', active: true }
-};
+// Демо-учётные записи удалены: проверка логина/пароля выполняется на сервере (POST /api/v1/auth/login)
