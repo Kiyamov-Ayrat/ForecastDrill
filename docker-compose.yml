@@ -29,7 +29,8 @@ services:
     volumes:
       - ./frontend:/usr/share/nginx/html:ro
     ports:
-      - "8080:80"
+      - "80:80"
+      - "8080:80"   # альтернативный порт, если 80 занят
 
 volumes:
   pgdata:
