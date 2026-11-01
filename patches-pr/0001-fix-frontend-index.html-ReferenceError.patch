@@ -1,0 +1,55 @@
+From 3f4e9c7a029ecb3d4f8a5824d62bd144b434a325 Mon Sep 17 00:00:00 2001
+From: "qwen.ai[bot]" <qwenlm-intl@service.alibaba.com>
+Date: Sun, 1 Nov 2026 21:19:05 +0000
+Subject: [PATCH] =?UTF-8?q?fix(frontend):=20=D0=BF=D0=BE=D1=80=D1=8F=D0=B4?=
+ =?UTF-8?q?=D0=BE=D0=BA=20=D0=B7=D0=B0=D0=B3=D1=80=D1=83=D0=B7=D0=BA=D0=B8?=
+ =?UTF-8?q?=20=D1=81=D0=BA=D1=80=D0=B8=D0=BF=D1=82=D0=BE=D0=B2=20=D0=B2=20?=
+ =?UTF-8?q?index.html=20=E2=80=94=20=D1=81=D1=82=D1=80=D0=B0=D0=BD=D0=B8?=
+ =?UTF-8?q?=D1=86=D0=B0=20=D0=B1=D0=BE=D0=BB=D1=8C=D1=88=D0=B5=20=D0=BD?=
+ =?UTF-8?q?=D0=B5=20=D0=BF=D0=B0=D0=B4=D0=B0=D0=B5=D1=82=20=D0=BD=D0=B0=20?=
+ =?UTF-8?q?ReferenceError?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+safe.js загружался первым и падал (window.render ещё не определён), bridge.js
+не был подключён вовсе, login.js использовал FD/Auth до их определения.
+Порядок теперь: utils -> state -> data -> charts -> router -> api -> экраны ->
+safe.js -> bridge.js -> main.js.
+---
+ frontend/index.html | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/frontend/index.html b/frontend/index.html
+index 94cab20..0ea29c9 100644
+--- a/frontend/index.html
++++ b/frontend/index.html
+@@ -32,14 +32,12 @@
+ <div id="toast"></div>
+ 
+ <!-- Ядро приложения -->
+-<script src="js/core/safe.js"></script>
+ <script src="js/core/utils.js"></script>
+ <script src="js/core/state.js"></script>
+ <script src="js/core/data.js"></script>
+ <script src="js/core/charts.js"></script>
+ <script src="js/core/router.js"></script>
+ <script src="js/core/api.js"></script>
+-<script src="js/core/bridge.js"></script>
+ 
+ 
+ <!-- Экраны (интерфейсы) -->
+@@ -56,6 +54,10 @@
+ <script src="js/screens/users.js"></script>
+ <script src="js/screens/live-views.js"></script>
+ 
++<!-- Обёртки безопасности: экранирование, журнал ошибок, доступ по ролям, блокировка входа.
++     Загружаются ПОСЛЕДНИМИ — safe.js переопределяет go()/render(), а bridge.js переопределяет go(). -->
++<script src="js/core/safe.js"></script>
++<script src="js/core/bridge.js"></script>
+ 
+ <!-- Точка входа: сборка реестра экранов и первый рендер -->
+ <script src="js/main.js"></script>
+-- 
+2.39.5
+
