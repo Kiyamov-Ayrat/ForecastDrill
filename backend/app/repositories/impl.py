@@ -14,6 +14,13 @@ class UserRepository(BaseRepository[User]):
     async def get_by_login(self, login: str) -> User | None:
         return await self.session.scalar(select(User).where(User.login == login))
 
+    async def all(self) -> Sequence[User]:
+        return (await self.session.scalars(select(User).order_by(User.login))).all()
+
+    async def delete(self, user: User) -> None:
+        await self.session.delete(user)
+        await self.session.commit()
+
 
 class WellRepository(BaseRepository[Well]):
     model = Well
