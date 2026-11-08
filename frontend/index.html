@@ -57,10 +57,10 @@
 <script src="js/screens/models.js"></script>
 <script src="js/screens/users.js"></script>
 
-<!-- Точка входа: сборка реестра экранов и первый рендер -->
-<script src="js/main.js"></script>
-
-<!-- НОВОЕ 2: связь с сервером. Должен идти ПОСЛЕ main.js -->
+<!-- НОВОЕ 2: связь с сервером. Должен идти ПЕРЕД main.js -->
 <script src="js/live/live.js"></script>
+
+<!-- Точка входа: первый рендер -->
+<script src="js/main.js"></script>
 </body>
 </html>

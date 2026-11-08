@@ -80,7 +80,7 @@
   }
 
   /* ---------- Данные с сервера ---------- */
-  const Bridge = {
+  const Bridge = window.Bridge = {
     wells: [], current: null, snapshot: null, history: [], alerts: [], thresholds: [],
     filter: 'all', cache: {}, timer: null, busy: false, failed: false,
     reset() { Object.assign(this, { wells: [], current: null, snapshot: null, history: [], alerts: [], thresholds: [], cache: {}, filter: 'all', failed: false }); },
