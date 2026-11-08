@@ -28,9 +28,10 @@ services:
     build: ./frontend
     volumes:
       - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
     ports:
-      - "80:80"
-      - "8080:80"   # альтернативный порт, если 80 занят
+      - "8080:80"
 
 volumes:
   pgdata:
