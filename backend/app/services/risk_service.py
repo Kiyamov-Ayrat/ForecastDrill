@@ -18,15 +18,21 @@ RECOMMENDATIONS = {
 
 
 class RiskService:
-    def __init__(self, predictions: IPredictionRepository, thresholds: IThresholdRepository,
-                 alerts: IAlertRepository, predictor: RiskPredictor):
+    def __init__(self, predictions, thresholds, alerts, predictor, telemetry):
         self.predictions, self.thresholds = predictions, thresholds
-        self.alerts, self.predictor = alerts, predictor      # зависимости внедряются снаружи (DI)
+        self.alerts, self.predictor = alerts, predictor
+        self.telemetry = telemetry
 
-    async def recalculate(self, well_id: UUID) -> None:
+    async def recalculate(self, well_id: UUID) -> None:                                      # один момент на все три прогноза
+        window = None
+        if self.predictor.window_seconds:
+            window = await self.telemetry.window(well_id, self.predictor.window_seconds)
+        results = await self.predictor.predict(well_id, window)
+        if not results:  # данных для прогноза ещё нет
+            return
         thr = await self.thresholds.as_map(well_id)
-        ts = utcnow()                                         # один момент на все три прогноза
-        for r in await self.predictor.predict(well_id):
+        ts = utcnow()
+        for r in results:
             version = await self.predictions.active_version(r.complication)
             if version is None:
                 continue

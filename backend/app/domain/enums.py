@@ -50,3 +50,9 @@ class ModelStatus(str, enum.Enum):
     active = "active"
     archived = "archived"
     rejected = "rejected"
+
+class SimulationMode(str, enum.Enum):
+    none = "none"
+    rare = "rare"
+    frequent = "frequent"
+    manual = "manual"

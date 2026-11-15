@@ -1,10 +1,12 @@
 from typing import Sequence
 from uuid import UUID
-from sqlalchemy import select
+from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
+from app.core.exceptions import Conflict
 from app.domain.enums import AlertStatus, Complication, ModelStatus, WellStatus
 from app.domain.levels import DEFAULT_THRESHOLDS
 from app.models.entities import (Alert, AlertFeedback, AuditLog, ModelVersion, Prediction,
-                                 Threshold, User, Well)
+                                 QualityComment, ReportFile, Threshold, User, Well, TelemetryRecord, Channel)
 from app.repositories.base import BaseRepository
 
 
@@ -18,8 +20,22 @@ class UserRepository(BaseRepository[User]):
         return (await self.session.scalars(select(User).order_by(User.login))).all()
 
     async def delete(self, user: User) -> None:
+        uid = user.id
+        user.wells.clear()
+        await self.session.flush()
+        for model, column in (
+            (AuditLog, AuditLog.user_id),
+            (AlertFeedback, AlertFeedback.user_id),
+            (ReportFile, ReportFile.uploaded_by),
+            (QualityComment, QualityComment.author_id),
+        ):
+            await self.session.execute(delete(model).where(column == uid))
         await self.session.delete(user)
-        await self.session.commit()
+        try:
+            await self.session.commit()
+        except IntegrityError:
+            await self.session.rollback()
+            raise Conflict("Нельзя удалить пользователя: на него есть ссылки в журналах")
 
 
 class WellRepository(BaseRepository[Well]):
@@ -113,3 +129,31 @@ class AlertRepository(BaseRepository[Alert]):
 
 class AuditRepository(BaseRepository[AuditLog]):
     model = AuditLog
+
+class TelemetryRepository(BaseRepository[TelemetryRecord]):
+    model = TelemetryRecord
+
+    async def channel_map(self) -> dict[str, int]:
+        return {c.name: c.id for c in (await self.session.scalars(select(Channel))).all()}
+
+    async def ensure_channels(self, specs) -> None:
+        existing = await self.channel_map()
+        for s in specs:
+            if s.name not in existing:
+                self.session.add(Channel(name=s.name, unit=s.unit))
+        await self.session.commit()
+
+    async def add_many(self, rows) -> None:
+        self.session.add_all(rows)
+        await self.session.commit()
+
+    async def window(self, well_id: UUID, since):
+        stmt = (select(TelemetryRecord.channel_id, TelemetryRecord.ts,
+                       TelemetryRecord.value, TelemetryRecord.quality_flag)
+                .where(TelemetryRecord.well_id == well_id, TelemetryRecord.ts >= since)
+                .order_by(TelemetryRecord.ts))
+        return (await self.session.execute(stmt)).all()
+
+    async def purge_before(self, ts) -> None:
+        await self.session.execute(delete(TelemetryRecord).where(TelemetryRecord.ts < ts))
+        await self.session.commit()

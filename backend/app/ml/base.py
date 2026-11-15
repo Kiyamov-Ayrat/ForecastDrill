@@ -1,8 +1,8 @@
-# app/ml/base.py
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from uuid import UUID
 from app.domain.enums import Complication
+from app.ml.features import TelemetryWindow
 
 
 @dataclass(frozen=True)
@@ -13,5 +13,7 @@ class PredictionResult:
 
 
 class RiskPredictor(ABC):
+    window_seconds: int = 0             # сколько секунд телеметрии нужно модели (0 – не нужна)
+
     @abstractmethod
-    async def predict(self, well_id: UUID) -> list[PredictionResult]: ...
+    async def predict(self, well_id: UUID, window: TelemetryWindow | None = None) -> list[PredictionResult]: ...

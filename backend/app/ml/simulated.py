@@ -21,7 +21,7 @@ class SimulatedPredictor(RiskPredictor):
     def __init__(self) -> None:
         self._state: dict[tuple[UUID, Complication], float] = {}
 
-    async def predict(self, well_id: UUID) -> list[PredictionResult]:
+    async def predict(self, well_id: UUID, window=None) -> list[PredictionResult]:
         results = []
         for c in Complication:
             p = self._state.get((well_id, c), random.uniform(0.05, 0.25))

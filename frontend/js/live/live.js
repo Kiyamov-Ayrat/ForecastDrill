@@ -42,7 +42,14 @@
       const pts = v.map((a, i) => (i * w / (v.length - 1)).toFixed(1) + ',' + y(a)).join(' ');
       const ln = (val, c) => `<line x1="0" x2="${w}" y1="${y(val)}" y2="${y(val)}" stroke="var(--${c})" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"/>`;
       return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px;display:block">${th ? ln(40, 'y') + ln(70, 'r') : ''}<polyline fill="none" stroke="var(--acc)" stroke-width="2.4" vector-effect="non-scaling-stroke" points="${pts}"/></svg>`;
-    }
+    },
+    // [ПРАВКА 3a] автомасштабируемый график для телеметрии
+    line(values, { h = 80 } = {}) {
+      if (values.length < 2) return '<div class="tag">Нет данных</div>';
+      const w = 320, min = Math.min(...values), max = Math.max(...values), span = (max - min) || 1;
+      const pts = values.map((v, i) => (i * w / (values.length - 1)).toFixed(1) + ',' + (h - 6 - (v - min) / span * (h - 12)).toFixed(1)).join(' ');
+      return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px;display:block"><polyline fill="none" stroke="var(--acc)" stroke-width="2" vector-effect="non-scaling-stroke" points="${pts}"/></svg>`;
+    },
   };
 
   /* ---------- Сеанс и клиент API ---------- */
@@ -78,12 +85,14 @@
     }
     return data;
   }
+  window.api = api;
 
   /* ---------- Данные с сервера ---------- */
   const Bridge = window.Bridge = {
     wells: [], current: null, snapshot: null, history: [], alerts: [], thresholds: [],
+    telemetry: [],                                       // [ПРАВКА 1] новое поле
     filter: 'all', cache: {}, timer: null, busy: false, failed: false,
-    reset() { Object.assign(this, { wells: [], current: null, snapshot: null, history: [], alerts: [], thresholds: [], cache: {}, filter: 'all', failed: false }); },
+    reset() { Object.assign(this, { wells: [], current: null, snapshot: null, history: [], alerts: [], thresholds: [], telemetry: [], cache: {}, filter: 'all', failed: false }); }, // [ПРАВКА 1] telemetry: []
     currentWell() { return this.wells.find(w => w.id === this.current) || null; },
     start() {
       this.stop();
@@ -103,7 +112,9 @@
         render();
       } catch (e) {
         if (!this.failed) { this.failed = true; toast(e.message); }
-      } finally { this.busy = false; }
+      } finally {
+        this.busy = false;
+      }
     }
   };
 
@@ -114,9 +125,12 @@
   async function loadRisk() {
     const w = Bridge.currentWell();
     if (!w) return;
-    const [snap, hist, alerts] = await Promise.all([
-      api(`/wells/${w.id}/risk`), api(`/wells/${w.id}/risk/history?minutes=30`), api(`/alerts?well_id=${w.id}&limit=20`)]);
-    Bridge.snapshot = snap; Bridge.history = hist.map(p => p.index); Bridge.alerts = alerts;
+    // [ПРАВКА 2] запрос телеметрии вместе с остальными данными
+    const [snap, hist, alerts, tel] = await Promise.all([
+      api(`/wells/${w.id}/risk`), api(`/wells/${w.id}/risk/history?minutes=30`),
+      api(`/alerts?well_id=${w.id}&limit=20`),
+      api(`/wells/${w.id}/telemetry?seconds=180&channels=flow_out,pit_level,spp`)]);
+    Bridge.snapshot = snap; Bridge.history = hist.map(p => p.index); Bridge.alerts = alerts; Bridge.telemetry = tel;
     if (typeof Alerts !== 'undefined' && Alerts.check) Alerts.check(snap.index);   // звук из лабораторной 3, если подключён
   }
   async function loadThresholds() {
@@ -228,6 +242,7 @@
   const origLogout = window.logout;
   window.logout = function () {
     Session.clear(); Bridge.stop(); Bridge.reset(); st.user = null;
+    if (typeof Users !== 'undefined') { Users.slot = null; Users.list = []; Users.wells = []; }
     if (typeof origLogout === 'function') origLogout(); else { st.role = null; render(); }
   };
 
@@ -292,10 +307,19 @@
         ? `<button data-fb class="btn ok" onclick="sendFeedback('${a.id}','confirmed')">Подтвердить</button>
            <button data-fb class="btn sec" onclick="sendFeedback('${a.id}','false_alarm')">Ложная</button>`
         : (a.verdict ? STATUS_RU[a.verdict] : '—')}</td></tr>`).join('');
+
+    // [ПРАВКА 3b] карточки телеметрии
+    const telemetry = Bridge.telemetry.length
+      ? `<div class="grid g3" style="margin-top:14px">${Bridge.telemetry.map(t => {
+          const last = t.points.length ? t.points[t.points.length - 1].value.toFixed(2) : '—';
+          return `<div class="card"><h3>${FD.esc(t.name)}, ${FD.esc(t.unit)}</h3>${FD.line(t.points.map(p => p.value))}
+                  <div class="tag">сейчас: ${last} (норма ≈ ${t.nominal})</div></div>`; }).join('')}</div>` : '';
+
     return wellBar() + alertBanner(s) +
       `<div class="grid g2" style="margin-top:14px">
          <div class="card"><h3>Индекс риска</h3>${FD.spark(Bridge.history, { th: true })}</div>
          <div class="card"><h3>Почему тревога: вклад параметров</h3>${reasons || '<span class="tag">Нет данных</span>'}</div></div>
+       ${telemetry}
        <div class="card" style="margin-top:14px"><h3>Предупреждения по скважине</h3>
          <table class="tbl"><tr><th>Время</th><th>Тип</th><th>Уровень</th><th>Статус</th><th>Отметка</th></tr>
          ${rows || '<tr><td colspan="5">Предупреждений нет</td></tr>'}</table></div>
@@ -349,6 +373,9 @@
     try { await startSession(await api('/auth/me')); }
     catch (e) { Session.clear(); render(); }
   })();
+
+  // [ПРАВКА 4] экспорт для панели имитатора
+  window.FDLive = { api, Bridge, Session };
 
   console.info('[БурПрогноз] Клиент API подключён, адрес:', API_BASE);
 })();

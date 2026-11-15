@@ -13,6 +13,7 @@ from app.ml import get_predictor
 from app.ml.base import RiskPredictor
 from app.models.entities import User, Well
 from app.repositories.impl import UserRepository, WellRepository
+from app.simulation import get_controller
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -69,3 +70,10 @@ async def well_access(well_id: UUID, user: User = Depends(get_current_user),
     if not can_access_well(user, well.id):
         raise Forbidden("Нет доступа к скважине")
     return well
+
+def get_telemetry_service(s: AsyncSession = Depends(get_session)):
+    return container.build_telemetry_service(s)
+
+
+def get_audit_service(s: AsyncSession = Depends(get_session)):
+    return container.build_audit(s)

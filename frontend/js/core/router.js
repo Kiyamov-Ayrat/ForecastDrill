@@ -18,10 +18,11 @@ function render() {
   }
   const R = ROLES[st.role], m = META[st.cur];
   $('who').innerHTML = `<b>${R.n}</b> <button class="btn sec" onclick="logout()">Выйти</button>`;
-  const live = ['risk', 'well', 'dash'].includes(st.cur);
-  const src = Bridge.busy && live ? 'данные: REST API (обновление)'
-            : Bridge.failed && live ? 'нет связи с сервером — показаны последние данные'
-            : live ? 'данные: REST API' : '';
+  const polling = ['risk', 'well', 'dash'].includes(st.cur);
+  const fromApi = polling || st.cur === 'users';
+  const src = Bridge.busy && polling ? 'данные: REST API (обновление)'
+            : Bridge.failed && polling ? 'нет связи с сервером — показаны последние данные'
+            : fromApi ? 'данные: REST API' : '';
   app.innerHTML = `<div class="app"><nav class="side">${R.nav.map(k =>
     `<a href="#" class="${k === st.cur ? 'on' : ''}" onclick="go('${k}');return false">${META[k][0]} · ${META[k][1]}</a>`
   ).join('')}</nav><main><h2>${m[1]}</h2>${SCREENS[st.cur]()}<p class="tag" style="margin-top:16px">${m[0]} · ${m[2]} · ${m[3]}${src ? ' · ' + src : ''}</p></main></div>`;
