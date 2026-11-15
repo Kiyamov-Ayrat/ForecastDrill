@@ -43,10 +43,15 @@ class RiskService:
             level = level_for(index, *thr[r.complication])
             open_alerts = await self.alerts.open_for(well_id, r.complication)
             if level is Level.green:
-                await self.alerts.close(open_alerts, ts)      # эпизод осложнения закончился
+                await self.alerts.close(open_alerts, ts)
             elif not open_alerts:
-                await self.alerts.save(Alert(prediction_id=pred.id, level=level,
-                                             status=AlertStatus.active, created_at=ts))
+                await self.alerts.save(Alert(prediction_id=pred.id, level=level, status=AlertStatus.active,
+                                             created_at=ts, peak_index=index))
+            else:
+                for a in open_alerts:                       # пик индекса за время эпизода
+                    if index > a.peak_index:
+                        a.peak_index = index
+                        await self.alerts.save(a)
 
     async def snapshot(self, well_id: UUID) -> RiskSnapshot:
         latest = await self.predictions.latest_per_type(well_id)

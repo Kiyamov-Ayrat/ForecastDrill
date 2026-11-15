@@ -50,3 +50,18 @@ class TelemetryService:
 
     async def purge(self, hours: int) -> None:
         await self.repo.purge_before(utcnow() - timedelta(hours=hours))
+
+    async def bucketed(self, well_id: UUID, start: datetime, end: datetime,
+                       codes: list[str] | None, step: int) -> list[TelemetrySeries]:
+        ids = await self._ids()
+        wanted = [c for c in CHANNELS if (codes is None or c.code in codes) and c.code in ids]
+        rows = await self.repo.bucketed(well_id, start, end, step, [ids[c.code] for c in wanted])
+        by_id = {ids[c.code]: c.code for c in wanted}
+        acc: dict[str, list[TelemetryPoint]] = {}
+        for ch_id, bucket, value in rows:
+            acc.setdefault(by_id[ch_id], []).append(TelemetryPoint(ts=bucket, value=round(float(value), 3)))
+        return [TelemetrySeries(code=c.code, name=c.name, unit=c.unit, nominal=c.nominal,
+                                points=acc.get(c.code, [])) for c in wanted]
+
+    async def time_range(self, well_id: UUID):
+        return await self.repo.time_range(well_id)

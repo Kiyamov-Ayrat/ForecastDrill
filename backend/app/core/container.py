@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ml.base import RiskPredictor
 from app.repositories.impl import (AlertRepository, AuditRepository, PredictionRepository,
                                    ThresholdRepository, UserRepository, WellRepository, TelemetryRepository)
+from app.schemas.quality_service import QualityService
 from app.services.alert_service import AlertService
 from app.services.audit_service import AuditService
 from app.services.auth_service import AuthService
@@ -36,3 +37,6 @@ def build_threshold_service(s: AsyncSession) -> ThresholdService:
 
 def build_telemetry_service(s: AsyncSession) -> TelemetryService:
     return TelemetryService(TelemetryRepository(s))
+
+def build_quality_service(s: AsyncSession) -> QualityService:
+    return QualityService(build_telemetry_service(s), AlertRepository(s), UserRepository(s))

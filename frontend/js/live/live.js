@@ -91,8 +91,9 @@
   const Bridge = window.Bridge = {
     wells: [], current: null, snapshot: null, history: [], alerts: [], thresholds: [],
     telemetry: [],                                       // [ПРАВКА 1] новое поле
+    comment: '',                                         // [4.1а] комментарий к отметке
     filter: 'all', cache: {}, timer: null, busy: false, failed: false,
-    reset() { Object.assign(this, { wells: [], current: null, snapshot: null, history: [], alerts: [], thresholds: [], telemetry: [], cache: {}, filter: 'all', failed: false }); }, // [ПРАВКА 1] telemetry: []
+    reset() { Object.assign(this, { wells: [], current: null, snapshot: null, history: [], alerts: [], thresholds: [], telemetry: [], comment: '', cache: {}, filter: 'all', failed: false }); }, // [4.1а] comment: ''
     currentWell() { return this.wells.find(w => w.id === this.current) || null; },
     start() {
       this.stop();
@@ -109,7 +110,10 @@
       try {
         if (view === 'dash') await loadWells(); else await loadRisk();
         this.failed = false;
-        render();
+        // [4.1б] не стирать вводимый текст при автообновлении
+        const a = document.activeElement;
+        const typing = a && a.matches('input,textarea,select') && document.getElementById('app').contains(a);
+        if (!typing) render();                       // пока пользователь печатает, экран не перерисовываем
       } catch (e) {
         if (!this.failed) { this.failed = true; toast(e.message); }
       } finally {
@@ -252,8 +256,11 @@
     if (!c.s) return c.html;
     const s = c.s;
     const open = Bridge.alerts.find(a => a.status === 'active');
+    // [4.1а] поле комментария над кнопками
     const actions = open
-      ? `<div class="row"><button data-fb class="btn ok big" onclick="sendFeedback('${open.id}','confirmed')">✔ Подтвердить</button>
+      ? `<input id="fbComment" maxlength="500" placeholder="Комментарий для ML-инженера (необязательно)"
+           value="${FD.esc(Bridge.comment || '')}" oninput="setFbComment(this.value)" style="width:100%;margin:0 0 10px">
+         <div class="row"><button data-fb class="btn ok big" onclick="sendFeedback('${open.id}','confirmed')">✔ Подтвердить</button>
          <button data-fb class="btn no big" onclick="sendFeedback('${open.id}','false_alarm')">✖ Ложная тревога</button></div>`
       : '<p class="tag">Нет предупреждений, ожидающих отметки.</p>';
     return wellBar() + alertBanner(s) +
@@ -264,10 +271,15 @@
          <div class="card"><h3>Ваше действие</h3>${actions}</div></div>`;
   }
 
+  // [4.1а] сохраняем комментарий в Bridge без перерисовки
+  window.setFbComment = function (v) { Bridge.comment = v; };
+
   window.sendFeedback = async function (id, verdict) {
     document.querySelectorAll('[data-fb]').forEach(b => { b.disabled = true; });      // защита от двойного нажатия
+    const comment = (Bridge.comment || '').trim();                                   // [4.1а]
     try {
-      await api(`/alerts/${id}/feedback`, { method: 'POST', body: { verdict } });
+      await api(`/alerts/${id}/feedback`, { method: 'POST', body: { verdict, comment: comment || null } });
+      Bridge.comment = '';                                                           // [4.1а] сброс после успешной отправки
       toast(verdict === 'confirmed' ? 'Отметка сохранена: подтверждено' : 'Отметка сохранена: ложная тревога');
       if (typeof Alerts !== 'undefined' && Alerts.mark) Alerts.mark(verdict === 'confirmed' ? 'ok' : 'false');
       await loadRisk();
@@ -374,8 +386,8 @@
     catch (e) { Session.clear(); render(); }
   })();
 
-  // [ПРАВКА 4] экспорт для панели имитатора
-  window.FDLive = { api, Bridge, Session };
+  // [4.1в] экспорт для панели имитатора и других модулей
+  window.FDLive = { api, Bridge, Session, FD, ensure, pending, loadWells };
 
   console.info('[БурПрогноз] Клиент API подключён, адрес:', API_BASE);
 })();

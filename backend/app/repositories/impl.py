@@ -8,7 +8,8 @@ from app.domain.levels import DEFAULT_THRESHOLDS
 from app.models.entities import (Alert, AlertFeedback, AuditLog, ModelVersion, Prediction,
                                  QualityComment, ReportFile, Threshold, User, Well, TelemetryRecord, Channel)
 from app.repositories.base import BaseRepository
-
+from sqlalchemy import delete, extract, func, literal_column, or_, select, text
+from app.domain.enums import QualityFlag
 
 class UserRepository(BaseRepository[User]):
     model = User
@@ -36,6 +37,11 @@ class UserRepository(BaseRepository[User]):
         except IntegrityError:
             await self.session.rollback()
             raise Conflict("Нельзя удалить пользователя: на него есть ссылки в журналах")
+    async def logins(self, ids) -> dict[UUID, str]:
+        if not ids:
+            return {}
+        rows = (await self.session.execute(select(User.id, User.login).where(User.id.in_(list(ids))))).all()
+        return {i: login for i, login in rows}
 
 
 class WellRepository(BaseRepository[Well]):
@@ -126,6 +132,12 @@ class AlertRepository(BaseRepository[Alert]):
         await self.session.refresh(fb)
         return fb
 
+    async def find_overlapping(self, well_id: UUID, start, end) -> Sequence[Alert]:
+        stmt = (self._base()
+                .where(Prediction.well_id == well_id, Alert.created_at <= end,
+                       or_(Alert.closed_at.is_(None), Alert.closed_at >= start))
+                .order_by(Alert.created_at))
+        return (await self.session.scalars(stmt)).unique().all()
 
 class AuditRepository(BaseRepository[AuditLog]):
     model = AuditLog
@@ -154,6 +166,39 @@ class TelemetryRepository(BaseRepository[TelemetryRecord]):
                 .order_by(TelemetryRecord.ts))
         return (await self.session.execute(stmt)).all()
 
+
     async def purge_before(self, ts) -> None:
-        await self.session.execute(delete(TelemetryRecord).where(TelemetryRecord.ts < ts))
+        await self.session.execute(text("""
+            DELETE FROM telemetry_records t
+            WHERE t.ts < :cutoff
+              AND NOT EXISTS (
+                SELECT 1 FROM alerts a
+                JOIN predictions p ON p.id = a.prediction_id
+                JOIN alert_feedbacks f ON f.alert_id = a.id
+                WHERE p.well_id = t.well_id
+                  AND t.ts BETWEEN a.created_at - interval '10 minutes'
+                               AND COALESCE(a.closed_at, a.created_at) + interval '10 minutes')"""),
+            {"cutoff": ts})
+        await self.session.execute(text("""
+            DELETE FROM predictions p
+            WHERE p.ts < :cutoff
+              AND NOT EXISTS (SELECT 1 FROM alerts a WHERE a.prediction_id = p.id)"""),
+            {"cutoff": ts})
         await self.session.commit()
+
+    async def bucketed(self, well_id: UUID, start, end, step: int, channel_ids):
+        sec = literal_column(str(int(step)))                     # шаг подставляется в SQL как число
+        bucket = func.to_timestamp(func.floor(extract("epoch", TelemetryRecord.ts) / sec) * sec)
+        stmt = (select(TelemetryRecord.channel_id, bucket.label("bucket"),
+                       func.avg(TelemetryRecord.value).label("value"))
+                .where(TelemetryRecord.well_id == well_id, TelemetryRecord.ts >= start,
+                       TelemetryRecord.ts < end, TelemetryRecord.channel_id.in_(channel_ids),
+                       TelemetryRecord.quality_flag == QualityFlag.ok)
+                .group_by(TelemetryRecord.channel_id, bucket).order_by(bucket))
+        return (await self.session.execute(stmt)).all()
+
+    async def time_range(self, well_id: UUID):
+        row = (await self.session.execute(
+            select(func.min(TelemetryRecord.ts), func.max(TelemetryRecord.ts))
+            .where(TelemetryRecord.well_id == well_id))).one()
+        return row[0], row[1]

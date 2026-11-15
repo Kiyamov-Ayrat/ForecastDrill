@@ -77,3 +77,6 @@ def get_telemetry_service(s: AsyncSession = Depends(get_session)):
 
 def get_audit_service(s: AsyncSession = Depends(get_session)):
     return container.build_audit(s)
+
+def get_quality_service(s: AsyncSession = Depends(get_session)):
+    return container.build_quality_service(s)

@@ -108,6 +108,7 @@ class Alert(Base):
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     review_note: Mapped[str | None] = mapped_column(Text)
     prediction: Mapped[Prediction] = relationship(lazy="joined")
+    peak_index: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     feedbacks: Mapped[list["AlertFeedback"]] = relationship(
         lazy="selectin", order_by="AlertFeedback.created_at")
 
